@@ -430,6 +430,13 @@ authenticate(struct plugin_context *context,
     pszToken = pszTokenStartPosition + 1;
   }
 
+  if(FALSE == isTokenSafe(pszToken))
+  {
+    trace(ERROR, __LINE__, "[Authy] Token is not safe. Aborting.\n");
+    iAuthResult = OPENVPN_PLUGIN_FUNC_ERROR;
+    goto EXIT;
+  }
+
   pszIpAddress = getEnv("untrusted_ip", envp);
 
   if(context->authCacheTimeout > 0) {

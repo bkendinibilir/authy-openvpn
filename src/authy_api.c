@@ -29,6 +29,9 @@
 #include "utils.h"
 #include "logger.h"
 #include "authy_api.h"
+#include "constants.h"
+
+#include "vendor/jsmn/jsmn.h"
 
 #ifdef WIN32
 #define snprintf _snprintf
@@ -149,6 +152,42 @@ curlWriter(char *ptr,
   return nmemb*size;
 }
 
+// Description
+//
+//  Goes through the response body looking for token validity.
+//
+// Parameters
+//
+//   pszRespone           - Response body in json format
+//
+// Returns
+//
+//   TRUE if the response body includes "token": "is valid", FALSE otherwise.
+//
+BOOL
+tokenResponseIsValid(char *pszResponse)
+{
+  int cnt;
+  jsmn_parser parser;
+  jsmn_init(&parser);
+  jsmntok_t tokens[20];
+  jsmn_parse(&parser, pszResponse, tokens, 20);
+
+  /* success isn't always on the same place, look until 19 because it
+     shouldn't be the last one because it won't be a key */
+  for (cnt = 0; cnt < 19; cnt++)
+  {
+    if(strncmp(pszResponse + (tokens[cnt]).start, "token", (tokens[cnt]).end - (tokens[cnt]).start) == 0)
+    {
+      if(strncmp(pszResponse + (tokens[cnt+1]).start, "is valid", (tokens[cnt+1]).end - (tokens[cnt+1]).start) == 0){
+        return TRUE;
+      } else {
+        return FALSE;
+      }
+    }
+  }
+	return FALSE;
+}
 
 //
 // Description
@@ -175,6 +214,21 @@ doHttpRequest(char *pszResultUrl, char *pszPostFields, char *pszResponse)
   RESULT r = FAIL;
   CURL *pCurl = NULL;
   int curlResult = -1;
+  char *pszUserAgent = NULL;
+
+  pszUserAgent = getUserAgent();
+  if(NULL == pszUserAgent)
+  {
+    trace(ERROR, __LINE__, "[Authy] Cannot get user agent. Setting user agent to unkown.");
+
+    pszUserAgent = calloc(strlen(UNKNOWN_VERSION_AGENT) + 1, sizeof(char));
+    if(pszUserAgent == NULL)
+    {
+      trace(ERROR, __LINE__, "[Authy] Failed to set user agent. Could not allocate memory for user agent.");
+      goto EXIT;
+    }
+    pszUserAgent = strncpy(pszUserAgent, UNKNOWN_VERSION_AGENT, strlen(UNKNOWN_VERSION_AGENT));
+  }
 
   curl_global_init(CURL_GLOBAL_ALL);
 
@@ -187,7 +241,8 @@ doHttpRequest(char *pszResultUrl, char *pszPostFields, char *pszResponse)
 
   curl_easy_setopt(pCurl, CURLOPT_URL, pszResultUrl);
 
-  if(pszPostFields){// POST REQUEST
+  if(pszPostFields) // POST REQUEST
+  {
     curl_easy_setopt(pCurl, CURLOPT_POSTFIELDS, pszPostFields);
   }
 
@@ -200,6 +255,7 @@ doHttpRequest(char *pszResultUrl, char *pszPostFields, char *pszResponse)
   curl_easy_setopt(pCurl, CURLOPT_VERBOSE, 1L);
   curl_easy_setopt(pCurl, CURLOPT_WRITEFUNCTION, curlWriter);
   curl_easy_setopt(pCurl, CURLOPT_WRITEDATA, pszResponse);
+  curl_easy_setopt(pCurl, CURLOPT_USERAGENT, pszUserAgent);
 
   curlResult = (int) curl_easy_perform(pCurl);
   if(0 != curlResult) {
@@ -209,9 +265,14 @@ doHttpRequest(char *pszResultUrl, char *pszPostFields, char *pszResponse)
   }
 
   trace(INFO, __LINE__, "[Authy] Curl response: Body=%s\n", pszResponse);
+
   r = OK;
 
 EXIT:
+  if(pszUserAgent)
+  {
+    free(pszUserAgent);
+  }
 
 #ifdef WIN32
   trace(DEBUG, __LINE__, "[Authy] Can't clean curl, curl easy cleanup doesn't work on Windows");
@@ -223,7 +284,6 @@ EXIT:
 
   return r;
 }
-
 
 //
 // Description
@@ -340,6 +400,12 @@ verifyToken(const char *pszApiUrl,
     goto EXIT;
   }
 
+  if(FALSE == tokenResponseIsValid(pszResponse))
+  {
+    trace(ERROR, __LINE__, "Response does not include 'token': 'is valid'. Invalid token assumed.");
+    r = FAIL;
+    goto EXIT;
+  }
 
 EXIT:
   cleanAndFree(pszResultUrl);
