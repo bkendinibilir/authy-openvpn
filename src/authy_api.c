@@ -446,7 +446,7 @@ sendTokenToUser(const char *pszApiUrl,
   size_t endPointSize = 0;
   char *pszResultUrl = NULL;
   char *pszEndPoint = NULL;
-  char *pszParams = "?api_key=";
+  char *pszParams = "?force=true&api_key=";
 
   // /call/1 or /sms/1. Including the 2 slashes.
   endPointSize = 2 + strlen(pszVia) + strlen(pszAuthyId) + 1;
