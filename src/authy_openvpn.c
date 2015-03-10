@@ -281,6 +281,7 @@ static int
 verifyAuthCache(struct plugin_context *context, char *pszAuthyId, char *pszToken, char *pszIpAddress)
 {
   struct auth_cache *authCache;
+  time_t last_auth_ago;
   int cacheSlot = findAuthCacheSlot(context, pszAuthyId);
 
   if (cacheSlot == -1) {
@@ -288,14 +289,15 @@ verifyAuthCache(struct plugin_context *context, char *pszAuthyId, char *pszToken
   }
 
   authCache = &context->authCache[cacheSlot];
-  if (time(NULL) - authCache->timestamp < context->authCacheTimeout &&
+  last_auth_ago = time(NULL) - authCache->timestamp;
+  if (last_auth_ago < context->authCacheTimeout &&
       strncmp(authCache->authyToken, pszToken, MAX_TOKEN_LENGTH) == 0 &&
       strncmp(authCache->ipAddress, pszIpAddress, IPADDRESS_LEN) == 0) {
     return OK;
   }
 
-  trace(INFO, __LINE__, "[Authy] AuthCache: invalid timestamp, token or client ip address for authyID=%s, purge cache slot.\n",
-    authCache->authyID);
+  trace(INFO, __LINE__, "[Authy] AuthCache: Cache timeout (last login %d seconds ago), changed client ip address=%s or invalid token for authyID=%s, purge cache slot.\n",
+    last_auth_ago, pszIpAddress, authCache->authyID);
   memset(authCache, 0, sizeof(struct auth_cache));
   strncpy(authCache->authyID, pszAuthyId, MAX_AUTHY_ID_LENGTH);
 
