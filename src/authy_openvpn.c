@@ -36,15 +36,13 @@
  * pam = 1;
  */
 
-#define AUTHYID_LEN 16
-#define AUTHYTOKEN_LEN 16
 #define IPADDRESS_LEN 16
 #define AUTHCACHE_MAX 1024
 
 struct auth_cache {
-  char authyID[AUTHYID_LEN];
-  char authyToken[AUTHYTOKEN_LEN];
-  char ipAddress[IPADDRESS_LEN];
+  char authyID[MAX_AUTHY_ID_LENGTH + 1];
+  char authyToken[MAX_TOKEN_LENGTH + 1];
+  char ipAddress[IPADDRESS_LEN + 1];
   time_t timestamp;
 };
 
@@ -235,7 +233,7 @@ findAuthCacheSlot(struct plugin_context *context, char *pszAuthyId)
   int i;
 
   for (i = 0; i < context->authCacheCount; i++) {
-    if (strncmp(context->authCache[i].authyID, pszAuthyId, AUTHYID_LEN) == 0) {
+    if (strncmp(context->authCache[i].authyID, pszAuthyId, MAX_AUTHY_ID_LENGTH) == 0) {
       return i;
     }
   }
@@ -265,9 +263,9 @@ updateAuthCache(struct plugin_context *context, char *pszAuthyId, char *pszToken
   }
 
   authCache = &context->authCache[cacheSlot];
-  strncpy(authCache->authyID, pszAuthyId, AUTHYID_LEN - 1);
-  strncpy(authCache->authyToken, pszToken, AUTHYTOKEN_LEN - 1);
-  strncpy(authCache->ipAddress, pszIpAddress, IPADDRESS_LEN - 1);
+  strncpy(authCache->authyID, pszAuthyId, MAX_AUTHY_ID_LENGTH);
+  strncpy(authCache->authyToken, pszToken, MAX_TOKEN_LENGTH);
+  strncpy(authCache->ipAddress, pszIpAddress, IPADDRESS_LEN);
   authCache->timestamp = time(NULL);
 
   trace(INFO, __LINE__, "[Authy] AuthCache: updated slot #%d for authyID=%s with timestamp=%d and ip=%s.\n",
@@ -291,7 +289,7 @@ verifyAuthCache(struct plugin_context *context, char *pszAuthyId, char *pszToken
 
   authCache = &context->authCache[cacheSlot];
   if (time(NULL) - authCache->timestamp < context->authCacheTimeout &&
-      strncmp(authCache->authyToken, pszToken, AUTHYTOKEN_LEN) == 0 &&
+      strncmp(authCache->authyToken, pszToken, MAX_TOKEN_LENGTH) == 0 &&
       strncmp(authCache->ipAddress, pszIpAddress, IPADDRESS_LEN) == 0) {
     return OK;
   }
