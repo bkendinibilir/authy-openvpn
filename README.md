@@ -1,4 +1,4 @@
-# Authy Open VPN
+# Authy Open VPN - Caching edition
 
 With Authy OpenVPN plugin you can add Two-Factor Authentication to
 your vpn server in just minutes. This plugin supports certificate based
@@ -7,6 +7,29 @@ authentication, PAM or LDAP.
 With Authy your users can authenticate using Authy mobile app or a hardware dongle.
 
 _For hardware dongles, phone calls or LDAP please contact sales@authy.com_
+
+## Caching Two-Factor Token
+
+This version of the Authy OpenVPN plugin was extended to cache the given
+two-factor tokens for usability reasons. After successful authentification
+with a validated Authy token, the actual timestamp, the client ip address,
+the Authy id and Authy token are saved in memory. If the user reauthenticate
+with the same Authy id, token and ip address in a specific time
+(e.g. 24 hours), the plugin will grant access, even though the given Authy
+token is not fresh.
+
+With this feature the user can save his password/token in the openvpn client
+and does not have to enter new tokens for a specific time, if his ip address
+has not changed.
+
+This is a balance between security (additional two-factoy tokens) and
+usability (caching of the token for a specific time).
+
+The timeout can be set in seconds as last option to the plugin setting in the openvpn configuration, e.g. for 24h x 60s = 1440s:
+
+plugin /usr/lib/authy/authy-openvpn.so https://api.authy.com/protected/json [YOUR_API_KEY] nopam 1440
+
+The cache will be disabled, if no timeout value is given (or is set to 0).
 
 ## Pre-Requisites
 
@@ -162,13 +185,13 @@ To use PAM simply answer that you are going to use PAM during the
 #### After run the post-install script your server.conf should have the following lines:
 
     # This line was added by the authy-openvpn installer
-    plugin /usr/lib/authy/authy-openvpn.so https://api.authy.com/protected/json [YOUR_API_KEY] pam
+    plugin /usr/lib/authy/authy-openvpn.so https://api.authy.com/protected/json [YOUR_API_KEY] pam [CACHE_TIMEOUT_IN_SECONDS]
 
 Make sure your pam openvpn plugin is loaded after the authy openvpn plugin.
 Plugins are loaded in the order they appear in the config file, the result should look like:
 
     # This line was added by the authy-openvpn installer
-    plugin /usr/lib/authy/authy-openvpn.so https://api.authy.com/protected/json [YOUR_API_KEY] pam
+    plugin /usr/lib/authy/authy-openvpn.so https://api.authy.com/protected/json [YOUR_API_KEY] pam [CACHE_TIMEOUT_IN_SECONDS]
 
     plugin /usr/lib/openvpn/openvpn-auth-pam.so "login login USERNAME password PASSWORD"
 
