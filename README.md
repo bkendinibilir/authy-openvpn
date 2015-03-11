@@ -27,7 +27,7 @@ usability (caching of the token for a specific time).
 
 The timeout can be set in seconds as last option to the plugin setting in the openvpn configuration, e.g. for 24h x 60s = 1440s:
 
-plugin /usr/lib/authy/authy-openvpn.so https://api.authy.com/protected/json [YOUR_API_KEY] nopam 1440
+    plugin /usr/lib/authy/authy-openvpn.so https://api.authy.com/protected/json [YOUR_API_KEY] nopam 1440
 
 The cache will be disabled, if no timeout value is given (or is set to 0).
 
